@@ -1,0 +1,17 @@
+{
+    "sleeptime": "720",
+    "exchanges": [
+        { 
+            "id": 0,
+            "pnl": 0,
+            "exchange": "bybit",
+            "botname": "YOUR BOTNAME",
+            "apikey": "YOUR_API_KEY",
+            "apisecret": "YOUR_API_SECRET",
+            "percentage_move": "60",
+            "discord_webhook": "",
+            "maxmargin": "25"
+ 
+        }
+    ]
+    }
