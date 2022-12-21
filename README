@@ -1,6 +1,6 @@
 Steps that need to be done:
 * install nodejs (https://nodejs.org/en/download) and install the LTS version. Install this with default settings.
-* unpack the zip file
+* Download and unpack the zip file https://github.com/elmontagne/fundtransfer/releases
 * edit dist/config.json . (sleeptime is in minutes, first time pnl is 0 that will be updated the next run). Do not edit the PNL! It is a JSON file, multiple accounts are supported, also Binance/Finandy.
 * assuming you are running on Windows: Rightclick the startFundTransfer.bat ,properties, unblock if needed). Then run the bat file. First time it will download needed files and starts running.
 
