@@ -131,66 +131,70 @@ function bybitCheck(i, apiKey, privateKey, maxMargin, botName, discordUrl, perce
             key: apiKey,
             secret: privateKey
         });
-        client.getWalletBalance("USDT")
-            .then((result) => {
-            balance = result.result.USDT.equity;
-            //console.log(result);
-            balance = +balance.toFixed(2);
-            pnl = result.result.USDT.wallet_balance;
-            used_margin = result.result.USDT.used_margin;
-            let profit = 0;
+        const equity = (yield client.getWalletBalance("USDT")).result.USDT.equity;
+        const wallet_balance = (yield client.getWalletBalance("USDT")).result.USDT.wallet_balance;
+        const used_margin = (yield client.getWalletBalance("USDT")).result.USDT.used_margin;
+        const spotBalance = (yield assetClient.getAssetInformation()).result.spot.assets.filter((c) => c.coin === "USDT")[0].free;
+        //client.getWalletBalance("USDT")
+        //.then((result: { result: { USDT: { equity: any; wallet_balance: any; used_margin: any; }; }; }) => {
+        balance = equity;
+        //console.log(result);
+        balance = +balance.toFixed(2);
+        pnl = wallet_balance;
+        //used_margin = used_margin;
+        let profit = 0;
+        if (savedPnl === 0) {
+            profit = 0.00;
+        }
+        else {
+            profit = pnl - savedPnl;
+            profit = +profit.toFixed(2);
+        }
+        transferred = (profit * percentageMove) / 100;
+        transferred = +transferred.toFixed(2);
+        let pnl2 = pnl - transferred;
+        if (pnl > savedPnl && savedPnl > 0) {
+            console.log("We have profit! USDT", profit);
+            margin = (used_margin / balance) * 100;
+            if (margin < maxMargin) {
+                errorMessage = "**TRANSFER:** SUCCESS **account:** " + botName + " **totalBalance:** " + balance + " **Profit:** " + profit + " **transferred:** " + transferred + " USDT" + " **spotBalance:** " + spotBalance;
+                log_to_discord(discordUrl, errorMessage);
+                //console.log(uuid);
+                assetClient.createInternalTransfer({
+                    transfer_id: uuid,
+                    coin: 'USDT',
+                    amount: String(profit),
+                    from_account_type: 'CONTRACT',
+                    to_account_type: 'SPOT'
+                })
+                    .then((result) => {
+                    console.log(result);
+                });
+            }
+            else {
+                console.log("Can't transfer, above maximum defined margin.");
+                errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** Can't transfer, above maximum defined margin." + " **spotBalance:** " + spotBalance;
+                log_to_discord(discordUrl, errorMessage);
+            }
+        }
+        else {
             if (savedPnl === 0) {
-                profit = 0.00;
+                console.log("There was no profit this time: 0");
+                errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** There was no profit this time: 0" + " **spotBalance:** " + spotBalance;
+                log_to_discord(discordUrl, errorMessage);
             }
             else {
-                profit = pnl - savedPnl;
-                profit = +profit.toFixed(2);
+                console.log("There was no profit this time: ", profit);
+                errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** There was no profit this time: " + profit + " **spotBalance:** " + spotBalance;
+                log_to_discord(discordUrl, errorMessage);
             }
-            transferred = (profit * percentageMove) / 100;
-            transferred = +transferred.toFixed(2);
-            let pnl2 = pnl - transferred;
-            if (pnl > savedPnl && savedPnl > 0) {
-                console.log("We have profit! USDT", profit);
-                margin = (used_margin / balance) * 100;
-                if (margin < maxMargin) {
-                    errorMessage = "**TRANSFER:** SUCCESS **account:** " + botName + " **totalBalance:** " + balance + " **Profit:** " + profit + " **transferred:** " + transferred + " USDT";
-                    log_to_discord(discordUrl, errorMessage);
-                    //console.log(uuid);
-                    assetClient.createInternalTransfer({
-                        transfer_id: uuid,
-                        coin: 'USDT',
-                        amount: String(profit),
-                        from_account_type: 'CONTRACT',
-                        to_account_type: 'SPOT'
-                    })
-                        .then((result) => {
-                        console.log(result);
-                    });
-                }
-                else {
-                    console.log("Can't transfer, above maximum defined margin.");
-                    errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** Can't transfer, above maximum defined margin.";
-                    log_to_discord(discordUrl, errorMessage);
-                }
-            }
-            else {
-                if (savedPnl === 0) {
-                    console.log("There was no profit this time: 0");
-                    errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** There was no profit this time: 0";
-                    log_to_discord(discordUrl, errorMessage);
-                }
-                else {
-                    console.log("There was no profit this time: ", profit);
-                    errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** There was no profit this time: " + profit;
-                    log_to_discord(discordUrl, errorMessage);
-                }
-            }
-            exchangeConf.exchanges[i].pnl = pnl2;
-            fs.writeFileSync('config.json', JSON.stringify(exchangeConf, null, 4));
-        })
-            .catch((err) => {
-            console.error("getWalletBalance error: ", err);
-        });
+        }
+        exchangeConf.exchanges[i].pnl = pnl2;
+        fs.writeFileSync('config.json', JSON.stringify(exchangeConf, null, 4));
+        //})
+        //.catch((err: any) => {
+        //    console.error("getWalletBalance error: ", err);
+        //})
     });
 }
 function main() {
