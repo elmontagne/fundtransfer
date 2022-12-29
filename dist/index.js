@@ -50,20 +50,23 @@ function log_to_discord(discordUrl, errorMessage) {
     });
 }
 function binanceCheck(i, apiKey, privateKey, maxMargin, botName, discordUrl, percentageMove, uuid, savedPnl) {
-    const binClient = new USDMClient({
-        api_key: apiKey,
-        api_secret: privateKey,
-    });
-    const transferClient = new Spot(apiKey, privateKey);
-    binClient
-        .getAccountInformation("USDT")
-        .then((result) => {
-        const amountAssets = result.assets.length; //to define the amount of loops
+    return __awaiter(this, void 0, void 0, function* () {
+        const binClient = new USDMClient({
+            api_key: apiKey,
+            api_secret: privateKey,
+        });
+        const transferClient = new Spot(apiKey, privateKey);
+        const spotBalance = (yield transferClient.userAsset('USDT')).data[0].free;
+        const assets = (yield binClient.getAccountInformation('USDT')).assets;
+        //binClient   
+        //.getAccountInformation("USDT")
+        //.then((result: { assets: string | any[]; }) => {
+        const amountAssets = assets.length; //to define the amount of loops
         for (let b = 0; b < amountAssets; b++) {
-            if (result.assets[b].asset === "USDT") {
-                initialMargin = +result.assets[b].initialMargin;
-                maintenanceMargin = +result.assets[b].maintMargin;
-                pnl = +result.assets[b].marginBalance;
+            if (assets[b].asset === "USDT") {
+                initialMargin = +assets[b].initialMargin;
+                maintenanceMargin = +assets[b].maintMargin;
+                pnl = +assets[b].marginBalance;
                 balance = +pnl.toFixed(2);
                 used_margin = ((initialMargin + maintenanceMargin) / balance) * 100;
                 let profit = 0;
@@ -86,7 +89,7 @@ function binanceCheck(i, apiKey, privateKey, maxMargin, botName, discordUrl, per
                     console.log("We have profit! USDT", profit);
                     margin = (used_margin / balance) * 100;
                     if (margin < maxMargin) {
-                        errorMessage = "**TRANSFER:** SUCCESS **account:** " + botName + " **totalBalance:** " + balance + " **Profit:** " + profit + " **transferred:** " + transferred + " USDT";
+                        errorMessage = "**TRANSFER:** SUCCESS **account:** " + botName + " **totalBalance:** " + balance + " **Profit:** " + profit + " **transferred:** " + transferred + " USDT" + " **spotBalance:** " + spotBalance;
                         log_to_discord(discordUrl, errorMessage);
                         // 2 -> futures to spot
                         transferClient.futuresTransfer('USDT', transferred, 2)
@@ -95,19 +98,19 @@ function binanceCheck(i, apiKey, privateKey, maxMargin, botName, discordUrl, per
                     }
                     else {
                         console.log("Can't transfer, above maximum defined margin.");
-                        errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** Can't transfer, above maximum defined margin.";
+                        errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** Can't transfer, above maximum defined margin." + " **spotBalance:** " + spotBalance;
                         log_to_discord(discordUrl, errorMessage);
                     }
                 }
                 else {
                     if (savedPnl === 0) {
                         console.log("There was no profit this time: 0");
-                        errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** There was no profit this time: 0";
+                        errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** There was no profit this time: 0" + " **spotBalance:** " + spotBalance;
                         log_to_discord(discordUrl, errorMessage);
                     }
                     else {
                         console.log("There was no profit this time: ", profit);
-                        errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** There was no profit this time: " + profit;
+                        errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** There was no profit this time: " + profit + " **spotBalance:** " + spotBalance;
                         log_to_discord(discordUrl, errorMessage);
                     }
                 }
@@ -115,30 +118,30 @@ function binanceCheck(i, apiKey, privateKey, maxMargin, botName, discordUrl, per
                 fs.writeFileSync('config.json', JSON.stringify(exchangeConf, null, 4));
             }
         }
-    })
-        .catch((err) => {
-        console.error('getBalance error: ', err);
     });
 }
 function bybitCheck(i, apiKey, privateKey, maxMargin, botName, discordUrl, percentageMove, uuid, savedPnl) {
-    //if (botName === "") { continue; }
-    const client = new InverseClient({
-        key: apiKey,
-        secret: privateKey
-    });
-    const assetClient = new AccountAssetClient({
-        key: apiKey,
-        secret: privateKey
-    });
-    client.getWalletBalance("USDT")
-        .then((result) => {
-        //    .then((result: { result: { USDT: { equity: any; cum_realised_pnl: any; used_margin: any; }; }; }) => {
-        balance = result.result.USDT.equity;
+    return __awaiter(this, void 0, void 0, function* () {
+        //if (botName === "") { continue; }
+        const client = new InverseClient({
+            key: apiKey,
+            secret: privateKey
+        });
+        const assetClient = new AccountAssetClient({
+            key: apiKey,
+            secret: privateKey
+        });
+        const equity = (yield client.getWalletBalance("USDT")).result.USDT.equity;
+        const wallet_balance = (yield client.getWalletBalance("USDT")).result.USDT.wallet_balance;
+        const used_margin = (yield client.getWalletBalance("USDT")).result.USDT.used_margin;
+        const spotBalance = (yield assetClient.getAssetInformation()).result.spot.assets.filter((c) => c.coin === "USDT")[0].free;
+        //client.getWalletBalance("USDT")
+        //.then((result: { result: { USDT: { equity: any; wallet_balance: any; used_margin: any; }; }; }) => {
+        balance = equity;
         //console.log(result);
         balance = +balance.toFixed(2);
-        pnl = result.result.USDT.wallet_balance;
-        used_margin = result.result.USDT.used_margin;
-        //let profit = pnl - savedPnl;
+        pnl = wallet_balance;
+        //used_margin = used_margin;
         let profit = 0;
         if (savedPnl === 0) {
             profit = 0.00;
@@ -147,7 +150,6 @@ function bybitCheck(i, apiKey, privateKey, maxMargin, botName, discordUrl, perce
             profit = pnl - savedPnl;
             profit = +profit.toFixed(2);
         }
-        //profit = +profit.toFixed(2);
         transferred = (profit * percentageMove) / 100;
         transferred = +transferred.toFixed(2);
         let pnl2 = pnl - transferred;
@@ -155,7 +157,7 @@ function bybitCheck(i, apiKey, privateKey, maxMargin, botName, discordUrl, perce
             console.log("We have profit! USDT", profit);
             margin = (used_margin / balance) * 100;
             if (margin < maxMargin) {
-                errorMessage = "**TRANSFER:** SUCCESS **account:** " + botName + " **totalBalance:** " + balance + " **Profit:** " + profit + " **transferred:** " + transferred + " USDT";
+                errorMessage = "**TRANSFER:** SUCCESS **account:** " + botName + " **totalBalance:** " + balance + " **Profit:** " + profit + " **transferred:** " + transferred + " USDT" + " **spotBalance:** " + spotBalance;
                 log_to_discord(discordUrl, errorMessage);
                 //console.log(uuid);
                 assetClient.createInternalTransfer({
@@ -171,27 +173,28 @@ function bybitCheck(i, apiKey, privateKey, maxMargin, botName, discordUrl, perce
             }
             else {
                 console.log("Can't transfer, above maximum defined margin.");
-                errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** Can't transfer, above maximum defined margin.";
+                errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** Can't transfer, above maximum defined margin." + " **spotBalance:** " + spotBalance;
                 log_to_discord(discordUrl, errorMessage);
             }
         }
         else {
             if (savedPnl === 0) {
                 console.log("There was no profit this time: 0");
-                errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** There was no profit this time: 0";
+                errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** There was no profit this time: 0" + " **spotBalance:** " + spotBalance;
                 log_to_discord(discordUrl, errorMessage);
             }
             else {
                 console.log("There was no profit this time: ", profit);
-                errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** There was no profit this time: " + profit;
+                errorMessage = "**TRANSFER** FAIL **account**: " + botName + " **totalBalance:** " + balance + " **reason:** There was no profit this time: " + profit + " **spotBalance:** " + spotBalance;
                 log_to_discord(discordUrl, errorMessage);
             }
         }
         exchangeConf.exchanges[i].pnl = pnl2;
         fs.writeFileSync('config.json', JSON.stringify(exchangeConf, null, 4));
-    })
-        .catch((err) => {
-        console.error("getWalletBalance error: ", err);
+        //})
+        //.catch((err: any) => {
+        //    console.error("getWalletBalance error: ", err);
+        //})
     });
 }
 function main() {
